@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <cairo/cairo.h>
+#include <string.h>
 
 #include "mako.h"
 #include "icon.h"
@@ -105,6 +106,12 @@ static void url_decode(char *dst, const char *src) {
 // return value must be freed by the caller.
 static char *resolve_icon(struct mako_notification *notif) {
 	char *icon_name = notif->app_icon;
+	// Use app name for icon if there was no icon specified
+	if (strlen(icon_name) == 0) {
+		icon_name = notif->app_name;
+	}
+	fprintf(stderr, "DEBUGPRINT: %s:%d: icon_name=%s\n", __FILE__, __LINE__, icon_name);
+
 	if (icon_name[0] == '\0') {
 		return NULL;
 	}
@@ -150,6 +157,7 @@ static char *resolve_icon(struct mako_notification *notif) {
 	}
 
 	while (theme_path) {
+		fprintf(stderr, "DEBUGPRINT: %s:%d: theme_path=%s\n", __FILE__, __LINE__, theme_path);
 		if (strlen(theme_path) == 0) {
 			continue;
 		}
@@ -176,6 +184,7 @@ static char *resolve_icon(struct mako_notification *notif) {
 			while (relative_path[0] == '/') {
 				++relative_path;
 			}
+			fprintf(stderr, "DEBUGPRINT: %s:%d: relative_path=%s\n", __FILE__, __LINE__, relative_path);
 
 			errno = 0;
 			int32_t icon_size = strtol(relative_path, NULL, 10);
@@ -188,7 +197,10 @@ static char *resolve_icon(struct mako_notification *notif) {
 				++relative_path;
 				icon_size = strtol(relative_path, NULL, 10);
 				if (errno || icon_size == 0) {
-					continue;
+					fprintf(stderr, "DEBUGPRINT: %s:%d: icon_size=%d\n", __FILE__, __LINE__, icon_size);
+					// Should use min icon size for scalable icons
+					// See https://github.com/emersion/mako/issues/464
+					icon_size = notif->style.max_icon_size;
 				}
 			}
 
@@ -219,6 +231,7 @@ static char *resolve_icon(struct mako_notification *notif) {
 		free(pattern);
 		globfree(&icon_glob);
 
+		fprintf(stderr, "DEBUGPRINT: %s:%d: icon_path=%s\n", __FILE__, __LINE__, icon_path);
 		if (icon_path) {
 			// The spec says that if we find any match whatsoever in a theme,
 			// we should stop there to avoid mixing icons from different
